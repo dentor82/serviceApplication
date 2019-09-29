@@ -29,9 +29,14 @@ public class MainService extends Service {
         public void run() {
             try {
                 while (true) {
+                    // Check if GPS enabled
+                    if(kernel.gps.canGetLocation()) {
+                        kernel.latitude = kernel.gps.getLatitude();
+                        kernel.longitude = kernel.gps.getLongitude();
+                    }
                     kernel.sqLite.saveCache();
                     //Toast.makeText(kernel.main, kernel.operatorName, Toast.LENGTH_SHORT).show();
-                    Thread.sleep(1000);
+                    Thread.sleep(20000);
                 }
             } catch (InterruptedException iex) {
             }

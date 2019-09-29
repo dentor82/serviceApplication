@@ -1,6 +1,7 @@
 package com.example.serviceCarpet;
 
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteCantOpenDatabaseException;
 import android.database.sqlite.SQLiteDatabase;
 import android.telephony.CellInfoGsm;
@@ -8,6 +9,9 @@ import android.telephony.CellSignalStrengthGsm;
 import android.telephony.SignalStrength;
 
 import com.example.kernel;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,10 +26,12 @@ public class DB_Helper {
 
     public DB_Helper(Context context) {
         cur = context;
+        //String b = "data/cache.db3";
+        String b = "/mnt/sdcard/cache.db3";
         try {
-            sqBase = SQLiteDatabase.openOrCreateDatabase("/mnt/sdcard/cache.db3", null);
+            sqBase = SQLiteDatabase.openOrCreateDatabase(b, null);
         } catch (SQLiteCantOpenDatabaseException e) {
-            File tmp = new File("/mnt/sdcard/cache.db3");
+            File tmp = new File(b);
             if (!tmp.exists()) {
                 try {
                     tmp.createNewFile();
@@ -35,13 +41,14 @@ public class DB_Helper {
             }
         }
         sqBase.execSQL("CREATE TABLE IF NOT EXISTS logRecord (\n" +
-                "id integer PRIMARY KEY,\n" +
+                "id integer PRIMARY KEY AUTOINCREMENT,\n" +
                 "userID varchar(50) NOT NULL,\n" +
                 "longitude varchar(100) NOT NULL,\n" +
                 "latitude varchar(100) NOT NULL,\n" +
                 "level varchar(100) NOT NULL,\n" +
                 "power varchar(100) NOT NULL,\n" +
                 "typeNet varchar(10) NOT NULL,\n" +
+                "operatorCode varchar(10) NOT NULL,\n" +
                 "operator varchar(10) NOT NULL,\n" +
                 "phoneType varchar(50) NOT NULL,\n" +
                 "date varchar(100) NOT NULL)");
@@ -100,13 +107,45 @@ public class DB_Helper {
         }
     }
 
-    public void saveCache() {
-        String operatorName = kernel.operatorName;
+    public synchronized retJSON getObj() throws JSONException {
+        retJSON retValue = new retJSON();
+        kernel.sqLite.getInstance().beginTransaction();
+        Cursor c = kernel.sqLite.getInstance().query("logRecord", null, "", null, "", "", "id", "1");
+        if (c.getCount() > 0) {
+            c.moveToNext();
+            retValue.json = new JSONObject();
+            for (int i = 0; i < c.getColumnCount(); i++) {
+                String name = c.getColumnName(i);
+                System.out.println(name);
+                if (name.equals("id")) {
+                    retValue.id = c.getLong(i);
+                } else {
+                    retValue.json.accumulate(name, c.getString(i));
+                }
+            }
+        }
+        kernel.sqLite.getInstance().setTransactionSuccessful();
+        kernel.sqLite.getInstance().endTransaction();
+        return retValue;
+    }
 
-        if ((kernel.level != -1) || (kernel.dbm != Integer.MIN_VALUE))
-        sqBase.execSQL("insert into logRecord (userID, longitude, latitude, level, power, typeNet, operator, phoneType, date) values " +
-                "('" + kernel.userID + "', '10', '15', '" + kernel.level + "', '" +
-                kernel.dbm + "', '" + getNetworkType(kernel.netType) + "', '" +
-                operatorName + "', '" + kernel.phoneType + "', '" + (System.currentTimeMillis() / 1000L) + "')");
+    public synchronized void delById(long inId) {
+        kernel.sqLite.getInstance().beginTransaction();
+        try {
+            kernel.sqLite.getInstance().execSQL("delete from logRecord where id = " + inId);
+            kernel.sqLite.getInstance().setTransactionSuccessful();
+        } catch (Exception e) {
+        }
+        kernel.sqLite.getInstance().endTransaction();
+    }
+
+    public synchronized void saveCache() {
+        if ((kernel.latitude != Double.MAX_VALUE) && (kernel.longitude != Double.MAX_VALUE)) {
+            if ((kernel.level != -1) || (kernel.dbm != Integer.MIN_VALUE))
+                sqBase.execSQL("insert into logRecord (userID, longitude, latitude, level, power, typeNet, operatorCode, operator, phoneType, date) values " +
+                        "('" + kernel.userID + "', '" + kernel.longitude + "', '" + kernel.latitude + "', '" + kernel.level + "', '" +
+                        kernel.dbm + "', '" + getNetworkType(kernel.netType) + "', '" + kernel.operatorName + "', '" +
+                        kernel.operatorCode + "', '" + kernel.phoneType + "', '" + (System.currentTimeMillis() / 1000L) + "')");
+        }
     }
 }

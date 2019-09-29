@@ -11,12 +11,12 @@ import com.example.kernel;
 
 import gps.GPSTracker;
 
-public class MainAlarmReceiver extends BroadcastReceiver {
-    static final long intervalMs = 20000; // Интервал в миллисекундах
+public class SendAlarmReceiver extends BroadcastReceiver {
+    static final long intervalMs = 5000; // Интервал в миллисекундах
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        context.startService(new Intent(context, MainService.class));
+        context.startService(new Intent(context, SendService.class));
         setupAlarm(context);
     }
 
@@ -26,7 +26,7 @@ public class MainAlarmReceiver extends BroadcastReceiver {
         if (kernel.gps == null)
             kernel.gps = new GPSTracker(context);
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        Intent i = new Intent(context, MainAlarmReceiver.class);
+        Intent i = new Intent(context, SendAlarmReceiver.class);
         PendingIntent pi = PendingIntent.getBroadcast(context, 0, i, 0);
         if (am != null) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
